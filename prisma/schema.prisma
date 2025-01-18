@@ -7,28 +7,109 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Post {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  title     String   @db.VarChar(255)
-  content   String?
-  published Boolean  @default(false)
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  Int
-}
+model Admin {
+  id        Int        @id @default(autoincrement())
+  name      String
+  email     String     @unique
+  password  String
+  quizzes   Quiz[]
+  subjects  Subject[]
+  questions Question[]
 
-model Profile {
-  id     Int     @id @default(autoincrement())
-  bio    String?
-  user   User    @relation(fields: [userId], references: [id])
-  userId Int     @unique
+  @@map("admins")
 }
 
 model User {
-  id      Int      @id @default(autoincrement())
-  email   String   @unique
-  name    String?
-  posts   Post[]
-  profile Profile?
+  id          Int           @id @default(autoincrement())
+  name        String?
+  email       String        @unique
+  password    String
+  submissions QuizAttempt[]
+
+  @@map("users")
+}
+
+model Subject {
+  id        Int      @id @default(autoincrement())
+  title     String   @unique
+  adminId   Int
+  admin     Admin    @relation(fields: [adminId], references: [id])
+  quizzes   Quiz[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subjects")
+}
+
+model Quiz {
+  id           Int           @id @default(autoincrement())
+  title        String        @db.VarChar(255)
+  description  String?
+  duration     Int
+  passingScore Int
+  isActive     Boolean       @default(true)
+  questions    Question[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  adminId      Int
+  admin        Admin         @relation(fields: [adminId], references: [id])
+  subjectId    Int
+  subject      Subject       @relation(fields: [subjectId], references: [id])
+  submissions  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id            Int                  @id @default(autoincrement())
+  questionText  String
+  correctAnswer String
+  quizId        Int
+  quiz          Quiz                 @relation(fields: [quizId], references: [id])
+  adminId       Int
+  admin         Admin                @relation(fields: [adminId], references: [id])
+  options       Option[]
+  submissions   QuestionSubmission[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@map("questions")
+}
+
+model Option {
+  id         Int      @id @default(autoincrement())
+  optionText String
+  questionId Int
+  question   Question @relation(fields: [questionId], references: [id])
+  isCorrect  Boolean
+
+  @@map("options")
+}
+
+model QuizAttempt {
+  id          Int                  @id @default(autoincrement())
+  userId      Int
+  user        User                 @relation(fields: [userId], references: [id])
+  quizId      Int
+  quiz        Quiz                 @relation(fields: [quizId], references: [id])
+  startedAt   DateTime             @default(now())
+  finishedAt  DateTime?
+  score       Float?
+  submissions QuestionSubmission[]
+
+  @@unique([userId, quizId])
+  @@map("quiz_submissions")
+}
+
+model QuestionSubmission {
+  id          Int         @id @default(autoincrement())
+  quizAttempt QuizAttempt @relation(fields: [attemptId], references: [id])
+  attemptId   Int
+  question    Question    @relation(fields: [questionId], references: [id])
+  questionId  Int
+  answer      String
+  isCorrect   Boolean
+
+  @@unique([attemptId, questionId])
+  @@map("question_submissions")
 }
